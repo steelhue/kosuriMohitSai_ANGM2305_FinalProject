@@ -1,7 +1,7 @@
 # Grid Fill Tool for Maya
 
 ## Repository
-https://github.com/steelhue/KosuriMohitSai_ANGM2305_FinalProject.git
+https://github.com/steelhue/kosuriMohitSai_ANGM2305_FinalProject.git
 
 ## Description
 This is a modeling tool for Maya that automatically generates quads geometry across open edges while respecting the surrounding surface flow. It eliminates manual retopology by allowing artists to close curvy and complex gaps with with ease.
