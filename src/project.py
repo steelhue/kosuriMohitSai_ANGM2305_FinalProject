@@ -30,22 +30,37 @@ def get_edge_vector(edge):
 def selected_edges_to_groups():
     selected_edges = cmds.ls(selection=True, flatten=True)
 
-    edge_list_1 = []
-    edge_list_2 = []
-    edge_list_3 = []
-    edge_list_4 = []
+    edge_list = []
 
     idx = 0
+    list_idx = 0
     while not idx >= len(selected_edges):
         angle_between_edges = cmds.angleBetween(get_edge_vector(selected_edges[idx]), get_edge_vector(selected_edges[idx + 1]))
+        if list_idx >= 4:
+            list_idx = 0
+        
         if not angle_between_edges[3] >= 90.0:
-            # add them to a list
-            # Find a cycle logic where the lists are populated based on edge angles
+            edge_list[list_idx].append(selected_edges[idx])
+            edge_list[list_idx].append(selected_edges[idx + 1]) # creates another list in the index
+        else:
+            list_idx += 1 
+    return edge_list
 
-    
+
+def edges_to_curves(edge_lists):
+    # at every index, there is a list so it accesses every list and converts the edges to corves
+    curves = []
+    for i in range(len(edge_lists)):
+        curves[i].appned(cmds.polyToCurve(edge_lists[i], degree=1))  
+    return curves
+
 
 def main():
-    selected_edges_to_groups()
+    edge_list = selected_edges_to_groups()
+    curves_list = edges_to_curves(edge_list)
+
+    cmds.boundry(curves_list[0], curves_list[1], curves_list[2], curves_list[3])
+
 
 if __name__ == "__main__":
     main()
