@@ -27,40 +27,53 @@ def get_edge_vector(edge):
     return vector
 
 
-def selected_edges_to_groups():
+def selected_edges_to_groups(corner_angle_threshold=45.0):
     selected_edges = cmds.ls(selection=True, flatten=True)
 
-    edge_list = []
-
+    edge_groups = [[selected_edges[0]]]
     idx = 0
-    list_idx = 0
-    while not idx >= len(selected_edges):
-        angle_between_edges = cmds.angleBetween(get_edge_vector(selected_edges[idx]), get_edge_vector(selected_edges[idx + 1]))
-        if list_idx >= 4:
-            list_idx = 0
+    current_group = 0
+
+    for idx in range(len(selected_edges) - 1):
+        vec_a = get_edge_vector(selected_edges[idx])
+        vec_b = get_edge_vector(selected_edges[idx + 1])
+
+        angle_btw = cmds.angleBetween(vec_a, vec_b)
+
+        angle = angle_btw[3]
+
+        if angle >= corner_angle_threshold:
+            current_group += 1
+            if current_group >= 4:
+                cmds.warning("More than 4 sides detected. Check your selection.")
+                break
+            edge_groups.append([])
         
-        if not angle_between_edges[3] >= 90.0:
-            edge_list[list_idx].append(selected_edges[idx])
-            edge_list[list_idx].append(selected_edges[idx + 1]) # creates another list in the index
-        else:
-            list_idx += 1 
-    return edge_list
+        edge_groups[current_group].append(selected_edges[idx + 1])
+
+    return edge_groups
 
 
 def edges_to_curves(edge_lists):
     # at every index, there is a list so it accesses every list and converts the edges to corves
     curves = []
-    for i in range(len(edge_lists)):
-        curves[i].appned(cmds.polyToCurve(edge_lists[i], degree=1))  
+    for group in range(len(edge_lists)):
+        if group:
+            result = cmds.polyToCurve(group, form=2, degree=1)
+            curves.append(result[0])
     return curves
 
 
 def main():
+    selected_object = cmds.ls(selection=True, objectsOnly=True)
+
     edge_list = selected_edges_to_groups()
     curves_list = edges_to_curves(edge_list)
 
-    cmds.boundry(curves_list[0], curves_list[1], curves_list[2], curves_list[3])
+    quad_filled_obj = cmds.boundary(curves_list[0], curves_list[1], curves_list[2], curves_list[3])
 
+    combined_obj = cmds.polyUnite(selected_object, quad_filled_obj, name=selected_object[0])
+    cmds.delete(combined_obj, ch=True)
 
 if __name__ == "__main__":
     main()
