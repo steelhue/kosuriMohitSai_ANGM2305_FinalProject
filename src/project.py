@@ -1,5 +1,4 @@
 import maya.cmds as cmds
-import math
 
 # group edges based on the angle
         # To do this, we need to get the vector of each edge and 
@@ -9,114 +8,152 @@ import math
 # using the boundry tool, select the edges and make the mesh
 # combine the meshes and apply merge by distance
 
-def get_edge_vector(edge):
-    # To get the vector of an edge in Maya Python, you must calculate the 
-    # difference between the positions of its two endpoints (vertices). 
-
-    # Using concepts of linear algebra, to extract a vector between 2 points:
-        # let P and Q be the start and end points of an edge
-        # vector PQ = Q - P
-    verts = cmds.polyListComponentConversion(edge, toVertex=True)
+def get_adjacent_boundry_edge(current_edge, visited_edge):
+    verts = cmds.polyListComponentConversion(current_edge, toVertex=True)
     verts = cmds.ls(verts, flatten=True)
 
-    p = cmds.xform(verts[0], q=True, ws=True, t=True)
-    q = cmds.xform(verts[1], q=True, ws=True, t=True)
+    for vert in verts:
+        # Get all edges connected to this vertex
+        connected_edges = cmds.polyListComponentConversion(vert, toEdge=True)
+        connected_edges = cmds.ls(connected_edges, flatten=True)
 
-    vector = (q[0] - p[0], q[1] - p[1], q[2] - p[2])
-    return vector
+        for edge in connected_edges:
+            if edge == current_edge:
+                continue
+            if edge in visited_edge:
+                continue
+
+            # Only follow boundary edges (edges with 1 face connection)
+            face_check = cmds.polyListComponentConversion(edge, toFace=True)
+            face_check = cmds.ls(face_check, flatten=True)
+            if len(face_check) == 1:
+                return edge, vert  # return the next edge and the shared vertex
+
+    return None, None
 
 
-def is_zero_vector(v):
-    return v[0] == 0.0 and v[1] == 0.0 and v[2] == 0.0
-
-
-def get_dot_product(vec_a, vec_b):
-    return sum(vec_a[0] * vec_b[0], vec_a[1] * vec_b[1], vec_a[2] * vec_b[2])
-
-
-def get_connecting_edge_count(vertex):
+def get_connected_edges(vertex):
+    mesh = vertex.split(".")[0]
     info = cmds.polyInfo(vertex, vertexToEdge=True)
-    connected_edges = info.split()
-    return len(connected_edges)
+    connected_edges = info[0].split(":")[1].split()
+    # return len(connected_edges)
+    return [f"{mesh}.e[{idx}]" for idx in connected_edges]
 
 
-def get_adjaent_edge(edge, selected_edges):
-    # verts = cmds.polyListComponentConversion(selected_edges[idx], toVertex=True)
-    # verts = cmds.ls(verts, flatten=True)
+def group_edge_by_corner():
+    selected = cmds.ls(selection=True, flatten=True)
+    if not selected:
+        cmds.warning("No Edges Selected")
+        return[]
+    
+    start_edge = selected[0]
 
-    # check if the adjacent edge's verts belongs in the same selection
-    # 
+    all_group = []
+    current_group = []
+    visited_edges = set()
+
+    current_edge = start_edge
+
+    while True:
+        visited_edges.add(current_edge)
+
+        verts = cmds.polyListComponentConversion(current_edge, toVertex=True)
+        verts = cmds.ls(verts, flatten=True)
+
+        for vert in verts:
+            if vert in [v for group in all_group for v in group]:
+                continue
+            if vert in current_group:
+                continue
+
+            connected_edges = get_connected_edges(vert)
+
+            boundary_edges = []
+            for e in connected_edges:
+                info = cmds.polyInfo(e, ef=True)
+                face_indices = info[0].split(":")[1].split()
+                if len(face_indices) == 1:
+                    boundary_edges.append(e)
+
+            valence = len(boundary_edges)          
+            if valence >= 4:                       
+                if current_group:
+                    current_group.append(vert)
+                    all_group.append(current_group)
+                current_group = [vert]
+            else:
+                current_group.append(vert)         
+
+        next_edge, _ = get_adjacent_boundry_edge(current_edge, visited_edges)
+
+        if next_edge is None or next_edge == start_edge:
+            break
+
+        current_edge = next_edge
+
+    return all_group
 
 
-    info = cmds.polyInfo(edge, edgeToEdge=True)
-    connected_edges = info.split()[2:] # connected edges set
+def group_verts_to_edges(vert_group):
+    """Finds the boundary edges that connect consecutive verts in a group."""
+    edges = []
+    mesh = vert_group[0].split(".")[0]
 
-    obj_name = edge.split('.')[0] # returns object name
-    all_neighbors = []
+    for i in range(len(vert_group) - 1):
+        vert_a = vert_group[i]
+        vert_b = vert_group[i + 1]
 
-    for i in connected_edges:
-        all_neighbors.append(f"{obj_name}.e{i}")
+        # Get edges connected to both verts — the shared one is our edge
+        edges_a = set(get_connected_edges(vert_a))
+        edges_b = set(get_connected_edges(vert_b))
+        shared = edges_a.intersection(edges_b)
 
-    selection_set = set(selected_edges)
+        if shared:
+            edges.append(shared.pop())
 
-    adjacent_selection = []
-
-    for edge in all_neighbors:
-        if edge in selection_set:
-            adjacent_selection.append[edge] # has edges from all directions
-
+    return edges
 
 
-def selected_edges_to_groups():
-
-    selected_edges = cmds.ls(selection=True, flatten=True)
-
-    edge_groups = [[selected_edges[0]]]
-    current_group = 0
-
-    for idx in range(len(selected_edges) - 1):
-        vec_a = get_edge_vector(selected_edges[idx])
-        vec_b = get_edge_vector(get_adjaent_edge(selected_edges[idx], selected_edges, idx))
-
-        if is_zero_vector(vec_a) or is_zero_vector(vec_b):
-            edge_groups[current_group].append(selected_edges[idx + 1])
+def edges_to_curves(vert_groups):
+    curves = []
+    for group in vert_groups:
+        if len(group) < 2:
             continue
 
-        dot = get_dot_product(vec_a, vec_b)
-        dot = max(-1.0, min(1.0, dot))
+        edges = group_verts_to_edges(group)
+        if not edges:
+            continue
 
-        angle = math.degrees(math.acos(dot))
+        # Convert each edge to its own curve, then attach them all together
+        segment_curves = []
+        for edge in edges:
+            result = cmds.polyToCurve(edge, form=2, degree=1)
+            segment_curves.append(result[0])
 
-        if angle >= 90.0:
-            current_group += 1
-            # if current_group >= 4:
-            #     cmds.warning("More than 4 sides detected. Check your selection.")
-            #     break
-            edge_groups.append([])
-        
-        edge_groups[current_group].append(selected_edges[idx + 1])
+        if len(segment_curves) == 1:
+            curves.append(segment_curves[0])
+        else:
+            # Attach all segments into one curve for this side
+            attached = segment_curves[0]
+            for i in range(1, len(segment_curves)):
+                attached = cmds.attachCurve(attached, segment_curves[i],
+                                            constructionHistory=False,
+                                            keepMultipleKnots=False)[0]
+            curves.append(attached)
 
-    return edge_groups
-
-
-def edges_to_curves(edge_lists):
-    # at every index, there is a list so it accesses every list and converts the edges to corves
-    curves = []
-    for group in range(len(edge_lists)):
-        if group:
-            result = cmds.polyToCurve(group, form=2, degree=1)
-            curves.append(result[0])
     return curves
 
 
 def main():
-    selected_object = cmds.ls(selection=True, objectsOnly=True)
+    selected_edges = cmds.ls(selection=True, flatten=True)
+    selected_object = selected_edges[0].split('.')[0]
 
-    edge_list = selected_edges_to_groups()
-    curves_list = edges_to_curves(edge_list)
+    edge_list = group_edge_by_corner()
+    print(edge_list)
+    # curves_list = edges_to_curves(edge_list)
 
     # quad_filled_obj = 
-    cmds.boundary(curves_list[0], curves_list[1], curves_list[2], curves_list[3])
+    # cmds.boundary(curves_list[0], curves_list[1], curves_list[2], curves_list[3])
 
     # combined_obj = cmds.polyUnite(selected_object, quad_filled_obj, name=selected_object[0])
     # cmds.delete(combined_obj, ch=True)
