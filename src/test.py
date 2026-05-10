@@ -3,31 +3,52 @@ import maya.cmds as cmds
 verts = cmds.ls(selection=True, flatten=True)
 
 print(verts)
+
 vert_indices = []
+edge_groups = []
+
+mesh_name = verts[0].split(".")[0]
+print(mesh_name)
+
 for vert in verts:
-    vert_indices.append(vert.split(".")[1][4])
+    idx = vert.split(".")[1]
+    idx = idx.replace("vtx[", "").replace("]", "")
+    vert_indices.append(idx)
 
 vert_A = vert_indices[0]
 vert_B = vert_indices[1]
 vert_C = vert_indices[2]
 vert_D = vert_indices[3]
 
-print(int(vert_A))
-print(int(vert_B))
-print(int(vert_C))
-print(int(vert_D))
+side_a = cmds.polySelect(mesh_name, shortestEdgePath=[int(vert_A), int(vert_B)])
+edge_groups.append(side_a)
 
-side_a = cmds.polySelect("pCube1", shortestEdgePath=(vert_A, vert_B))
-side_b = cmds.polySelect("pCube1", shortestEdgePath=(vert_B, vert_C))
-side_c = cmds.polySelect("pCube1", shortestEdgePath=(vert_C, vert_D))
-side_d = cmds.polySelect("pCube1", shortestEdgePath=(vert_D, vert_A))
+side_b = cmds.polySelect(mesh_name, shortestEdgePath=[int(vert_B), int(vert_C)])
+edge_groups.append(side_b)
 
-cmds.ls(side_a, selection=True, flatten=True)
-cmds.ls(side_b, selection=True, flatten=True)
-cmds.ls(side_c, selection=True, flatten=True)
-cmds.ls(side_d, selection=True, flatten=True)
+side_c = cmds.polySelect(mesh_name, shortestEdgePath=[int(vert_C), int(vert_D)])
+edge_groups.append(side_c)
 
-cmds.ls(verts, cl=True)
+side_d = cmds.polySelect(mesh_name, shortestEdgePath=[int(vert_D), int(vert_A)])
+edge_groups.append(side_d)
+
+
+import maya.cmds as cmds
+
+edges_group = cmds.ls(selection=True, flatten=True)
+curves_group = []
+for edges in edges_group:
+    curves = []
+    curves.append(cmds.polyToCurve(edges, form=2, degree=1))
+print(curves)
+
+import maya.cmds as cmds
+
+curves = cmds.ls(selection=True, flatten=True)
+attached_curve = cmds.attachCurve(curves[0:], kmk=False, ch=False)
+curves_group.append(attached_curve)
+objects_to_remove = curves[1:]
+cmds.delete(objects_to_remove)
 
 
 
