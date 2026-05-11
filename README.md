@@ -23,13 +23,6 @@ The fully automated workflow.
 
 The tool will automatically group the boundary edges into 4 sides, convert them to curves, generate a quad patch, and merge it back into the original mesh.
 
-### Manual Fill (Coming in V.2)
-A two-step workflow that lets you inspect and adjust the boundary curves before filling.
-
-1. Select 4 corner vertices → click **Generate Curves**
-2. Inspect and tweak the generated curves in the viewport
-3. Select all 4 curves → click **Fill**
-
 ---
 
 ## How It Works
