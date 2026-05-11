@@ -1,14 +1,14 @@
 import maya.cmds as cmds
 
-verts = cmds.ls(selection=True, flatten=True)
+cmds.selectPref(isp=False, trackSelectionOrder=True)
+verts = cmds.ls(orderedSelection=True)
+verts = cmds.ls(verts, flatten=True)
 
-print(verts)
 
 vert_indices = []
-edge_groups = []
+edges_group = []
 
 mesh_name = verts[0].split(".")[0]
-print(mesh_name)
 
 for vert in verts:
     idx = vert.split(".")[1]
@@ -20,17 +20,24 @@ vert_B = vert_indices[1]
 vert_C = vert_indices[2]
 vert_D = vert_indices[3]
 
+
 side_a = cmds.polySelect(mesh_name, shortestEdgePath=[int(vert_A), int(vert_B)])
-edge_groups.append(side_a)
+edges_group.append(side_a)
+
 
 side_b = cmds.polySelect(mesh_name, shortestEdgePath=[int(vert_B), int(vert_C)])
-edge_groups.append(side_b)
+edges_group.append(side_b)
+
 
 side_c = cmds.polySelect(mesh_name, shortestEdgePath=[int(vert_C), int(vert_D)])
-edge_groups.append(side_c)
+edges_group.append(side_c)
+
 
 side_d = cmds.polySelect(mesh_name, shortestEdgePath=[int(vert_D), int(vert_A)])
-edge_groups.append(side_d)
+edges_group.append(side_d)
+
+cmds.select(clear=True)
+print(edges_group)
 
 
 import maya.cmds as cmds
@@ -42,6 +49,8 @@ for edges in edges_group:
     curves.append(cmds.polyToCurve(edges, form=2, degree=1))
 print(curves)
 
+
+
 import maya.cmds as cmds
 
 curves = cmds.ls(selection=True, flatten=True)
@@ -49,6 +58,15 @@ attached_curve = cmds.attachCurve(curves[0:], kmk=False, ch=False)
 curves_group.append(attached_curve)
 objects_to_remove = curves[1:]
 cmds.delete(objects_to_remove)
+
+
+
+import maya.cmds as cmds
+# Select objects and combine
+objects = cmds.ls(['pCube2', 'pCube2_fill'], selection=True)
+combined_mesh = cmds.polyUnite(objects)
+# Clean up history to finalize the mesh
+cmds.delete(combined_mesh, ch=True)
 
 
 
