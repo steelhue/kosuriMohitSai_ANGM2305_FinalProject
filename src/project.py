@@ -1,6 +1,19 @@
 import math
 import maya.cmds as cmds
 
+def create_window():
+    window_name = 'quad-fil tool v.1'
+
+    if cmds.window(window_name, exists=True):
+        cmds.deleteUI(window_name)
+
+    window = cmds.window(window_name, title="Quad-Fill Tool V.1", widthHeight=(200,300))
+    cmds.columnLayout(adjustableColumn=True)
+    cmds.button(label="Quad Fill", command="main()")
+
+    cmds.showWindow(window)
+
+
 def get_angle(vert_pos, center_x, center_z):
     pos = vert_pos[1]
     return math.atan2(pos[2] - center_z, pos[0] - center_x)
@@ -97,13 +110,15 @@ def main():
     patch_poly = cmds.nurbsToPoly(patch_nurbs, constructionHistory=False, format=3, polygonType=1, uType=3, vType=3)
     filled_obj_name = patch_poly[0]
     cmds.delete(patch_poly, constructionHistory=True)
+    cmds.delete(patch_nurbs)
 
     combined = cmds.polyUnite(mesh_name, filled_obj_name, n=mesh_name)
     cmds.polyMergeVertex(combined[0], distance=0.001, constructionHistory=False)
     
+    cmds.polyNormal(normalMode=1, userNormalMode=1)
+
     cmds.delete(combined, constructionHistory=True)
-    cmds.delete(patch_nurbs)
 
 
 if __name__ == "__main__":
-    main()
+    create_window()
